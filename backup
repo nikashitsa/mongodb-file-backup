@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# if [ -z "$AWS_ACCESS_KEY" ]; then echo "Error: AWS_ACCESS_KEY not set"; echo "Finished: FAILURE"; exit 1; fi
+# if [ -z "$AWS_SECRET_KEY" ]; then echo "Error: AWS_SECRET_KEY not set"; echo "Finished: FAILURE"; exit 1; fi
+# if [ -z "$AWS_BUCKET" ]; then echo "Error: AWS_BUCKET not set"; echo "Finished: FAILURE"; exit 1; fi
+# if [ -z "$DB_HOST" ]; then echo "Error: DB_HOST not set"; echo "Finished: FAILURE"; exit 1; fi
+# if [ -z "$DB_NAME" ]; then echo "Error: DB_NAME not set"; echo "Finished: FAILURE"; exit 1; fi
+# if [ -z "$FILE_PATH" ]; then echo "Error: FILE_PATH not set"; echo "Finished: FAILURE"; exit 1; fi
+
+FILE_BACKUP=/backups/backup_file_`date '+%Y%m%d'`.tar.gz
+DB_BACKUP_DIR=/backups/backup_db_`date '+%Y%m%d'`
+DB_BACKUP_FILE=/backups/backup_db_`date '+%Y%m%d'`.tar.gz
+
+#
+echo "creating backup archive of $FILE_PATH"
+#
+tar --create --gzip -vv --directory="$FILE_PATH" --file="$FILE_BACKUP" "./"
+
+#
+echo "creating database dump"
+#
+cd /backups && \
+mongodump --host "$DB_HOST" --db "$DB_NAME" --out "$DB_BACKUP_DIR" && \
+tar -zcvf "$DB_BACKUP_FILE" "$DB_BACKUP_DIR" && \
+rm -rf "$DB_BACKUP_DIR"
+
+#
+echo "copy backups to aws s3"
+#
+s3cmd sync /backups "s3://$AWS_BUCKET" \
+--no-ssl \
+--access_key="$AWS_ACCESS_KEY" \
+--secret_key="$AWS_SECRET_KEY"
+
+#
+echo "removing backups from local disk"
+#
+rm -rf /backups/*
+
+echo 'Finished: SUCCESS'

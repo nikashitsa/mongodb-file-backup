@@ -14,14 +14,14 @@ DB_BACKUP_FILE=/backups/backup_db_`date '+%Y%m%d'`.tar.gz
 #
 echo "creating backup archive of $FILE_PATH"
 #
-tar --create --gzip -vv --directory="$FILE_PATH" --file="$FILE_BACKUP" "./"
+tar -zcf "$FILE_BACKUP" --directory="$FILE_PATH" "./"
 
 #
 echo "creating database dump"
 #
 cd /backups && \
 mongodump --host "$DB_HOST" --db "$DB_NAME" --out "$DB_BACKUP_DIR" && \
-tar -zcvf "$DB_BACKUP_FILE" "$DB_BACKUP_DIR" && \
+tar -zcf "$DB_BACKUP_FILE" "$DB_BACKUP_DIR" && \
 rm -rf "$DB_BACKUP_DIR"
 
 #
@@ -29,6 +29,7 @@ echo "copy backups to aws s3"
 #
 s3cmd sync /backups "s3://$AWS_BUCKET" \
 --no-ssl \
+--multipart-chunk-size-mb="100" \
 --access_key="$AWS_ACCESS_KEY" \
 --secret_key="$AWS_SECRET_KEY"
 
